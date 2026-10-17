@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hogwarts: Slytherin Simulator</title>
+<style>
+:root{--bg:#07110d;--panel:#0d1b15;--panel2:#10271d;--green:#1f7a50;--silver:#cbd4cf;--gold:#d8b66a;--text:#edf4ef;--muted:#a8b7af;--danger:#9e4d55}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 50% 0,#17352a,#050b08 70%);color:var(--text);font-family:Georgia,serif;min-height:100vh}
+button,input,select{font:inherit} button{cursor:pointer}
+#app{max-width:1250px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:14px}
+.brand{font-size:28px;letter-spacing:1px}.sub{color:var(--muted);font-size:13px}
+.stats{display:flex;gap:8px;flex-wrap:wrap}.pill{background:#10221a;border:1px solid #315443;border-radius:999px;padding:7px 11px;font-size:13px}
+.layout{display:grid;grid-template-columns:220px 1fr;gap:14px}
+nav,.card{background:linear-gradient(145deg,#102119,#09140f);border:1px solid #294638;border-radius:14px;box-shadow:0 12px 35px #0006}
+nav{padding:10px;height:max-content;position:sticky;top:10px} nav button{display:block;width:100%;text-align:left;background:transparent;color:var(--text);border:0;border-radius:10px;padding:12px;margin:2px 0}nav button:hover,nav button.active{background:#183526;color:#dcefe4}
+main{min-width:0}.card{padding:18px;margin-bottom:14px}.hero{min-height:245px;display:flex;flex-direction:column;justify-content:end;background:linear-gradient(180deg,#0000,#000b),radial-gradient(circle at 70% 20%,#2b6044,#0a1510 58%);position:relative;overflow:hidden}.hero:after{content:"";position:absolute;width:180px;height:180px;border:3px solid #c8d6cf22;border-radius:50%;right:50px;top:35px;box-shadow:0 0 60px #5db78a33}.hero>*{position:relative;z-index:1}.hero h1{font-size:42px;margin:0 0 6px}.quote{color:#c7d6cf;font-style:italic}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.two{grid-template-columns:repeat(2,1fr)}.mini{padding:14px;background:#0b1812;border:1px solid #243d31;border-radius:12px}.mini h3{margin:0 0 7px}.muted{color:var(--muted)}.bar{height:8px;background:#07100c;border-radius:9px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#276b48,#73b38d);border-radius:9px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}.btn{border:1px solid #416b56;background:#153625;color:#eaf4ee;border-radius:9px;padding:9px 13px}.btn:hover{background:#1d4933}.btn.gold{border-color:#806b3d;background:#3a301c}.btn.danger{border-color:#6d363d;background:#32191c}
+h2{margin-top:0}.tag{display:inline-block;padding:4px 8px;border-radius:99px;background:#173b2b;color:#b9e2ca;font-size:12px;margin:2px}.log{max-height:250px;overflow:auto}.entry{padding:9px 0;border-bottom:1px solid #1e3329}.character{display:flex;gap:14px;align-items:center}.avatar{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#3b8060,#0b1711);border:2px solid #718e80;font-size:30px}.quest{border-left:3px solid #4c906b;padding-left:12px;margin:10px 0}.locked{opacity:.45}.spell{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #20372b}
+.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:20px;z-index:10}.modal.open{display:flex}.modalbox{max-width:560px;width:100%;background:#0d1b15;border:1px solid #426653;border-radius:16px;padding:22px}
+input,select{width:100%;padding:10px;background:#07110d;border:1px solid #355444;color:#fff;border-radius:8px;margin:5px 0 12px}
+.small{font-size:12px}.success{color:#8bd0a6}.warn{color:#e0bc76}
+@media(max-width:800px){.layout{grid-template-columns:1fr}nav{position:static;display:flex;overflow:auto}nav button{min-width:130px}.grid{grid-template-columns:1fr 1fr}.hero h1{font-size:31px}}
+@media(max-width:520px){.grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div id="app">
+<header class="top">
+  <div><div class="brand">⚜ HOGWARTS: SLYTHERIN</div><div class="sub">Большой интерактивный симулятор • учебный год 1991–1992</div></div>
+  <div class="stats" id="topStats"></div>
+</header>
+<div class="layout">
+<nav id="nav"></nav>
+<main id="main"></main>
+</div>
+</div>
+
+<div class="modal" id="modal"><div class="modalbox" id="modalBox"></div></div>
+
+<script>
+const state={
+ page:"home", day:1, hour:8, coins:35, energy:90, hp:100, housePoints:10, reputation:0,
+ name:"", age:11, wand:"", pet:"", traits:[], spellXP:0, potionsXP:0, charmsXP:0, herbXP:0,
+ inventory:["Учебник по заклинаниям","Школьная мантия","Слизеринский галстук"], learned:["Люмос"],
+ quests:{first:false,library:false,duel:false,potion:false,secret:false},
+ relationships:{Draco:20,Pansy:10,Blaise:8,Theo:15},
+ log:["Добро пожаловать в Хогвартс. Создай персонажа, чтобы начать учебный год."]
+};
+const navItems=[["home","🏰 Главная"],["character","🪞 Персонаж"],["classes","📚 Уроки"],["castle","🗝 Замок"],["friends","🐍 Ученики"],["spells","✨ Заклинания"],["quests","📜 Квесты"],["inventory","🎒 Инвентарь"]];
+
+function save(){localStorage.setItem("hogwartsSlytherin",JSON.stringify(state))}
+function load(){try{Object.assign(state,JSON.parse(localStorage.getItem("hogwartsSlytherin")||"{}"))}catch(e){}}
+function addLog(x){state.log.unshift(`День ${state.day}, ${String(state.hour).padStart(2,"0")}:00 — ${x}`);if(state.log.length>40)state.log.pop()}
+function spendEnergy(n){if(state.energy<n){toast("Слишком мало энергии.");return false}state.energy-=n;return true}
+function advance(h=1){state.hour+=h;if(state.hour>=22){state.day++;state.hour=8;state.energy=Math.min(100,state.energy+45);addLog("Новый день. Энергия восстановлена.");}save()}
+function toast(t){alert(t);}
+
+function renderNav(){document.getElementById("nav").innerHTML=navItems.map(x=>`<button class="${state.page==x[0]?"active":""}" onclick="go('${x[0]}')">${x[1]}</button>`).join("")}
+function top(){document.getElementById("topStats").innerHTML=`<span class="pill">🗓 День ${state.day}</span><span class="pill">🕰 ${String(state.hour).padStart(2,"0")}:00</span><span class="pill">⚡ ${state.energy}</span><span class="pill">🏆 ${state.housePoints}</span><span class="pill">🪙 ${state.coins}</span>`}
+function go(p){state.page=p;render()}
+function render(){renderNav();top();let m=document.getElementById("main");m.innerHTML=pages[state.page]();save()}
+
+const pages={
+home:()=>`<section class="card hero"><span class="tag">SLYTHERIN</span><h1>Добро пожаловать в Хогвартс</h1><div class="quote">«Амбиции — это не недостаток. Важно лишь то, как ты ими распоряжаешься.»</div><div class="actions" style="margin-top:16px"><button class="btn gold" onclick="newGame()">✦ Создать персонажа</button><button class="btn" onclick="daily()">☀ Провести день</button></div></section>
+<section class="grid"><div class="card"><h2>Твоя история</h2><div class="character"><div class="avatar">🐍</div><div><b>${state.name||"Новый ученик"}</b><div class="muted">${state.age} лет • Слизерин</div><div class="small">${state.wand||"Палочка ещё не выбрана"}</div></div></div></div>
+<div class="card"><h2>Состояние</h2><p>❤️ Здоровье: ${state.hp}/100</p><div class="bar"><div class="fill" style="width:${state.hp}%"></div></div><p>⚡ Энергия: ${state.energy}/100</p><div class="bar"><div class="fill" style="width:${state.energy}%"></div></div></div>
+<div class="card"><h2>Сегодня</h2><p>Следующий шаг: <b>${state.hour<10?"утренний урок":"свободное время"}</b></p><button class="btn" onclick="go('classes')">Открыть расписание →</button></div></section>
+<section class="card"><h2>Последние события</h2><div class="log">${state.log.slice(0,7).map(x=>`<div class="entry">${x}</div>`).join("")}</div></section>`,
+
+character:()=>`<section class="card"><h2>🪞 Профиль ученика</h2><div class="grid two"><div class="mini"><div class="character"><div class="avatar">🐍</div><div><h3>${state.name||"Имя не выбрано"}</h3><div class="muted">${state.age} лет • Слизерин</div></div></div><hr><b>Черты</b><p>${(state.traits.length?state.traits:["Таинственный новичок"]).map(t=>`<span class="tag">${t}</span>`).join("")}</p></div>
+<div class="mini"><h3>Характеристики</h3><p>✨ Магическая теория <b>${state.spellXP}</b></p><p>🧪 Зельеварение <b>${state.potionsXP}</b></p><p>🌿 Травология <b>${state.herbXP}</b></p><p>🏆 Репутация <b>${state.reputation}</b></p><p>🎖 Очки Слизерина <b>${state.housePoints}</b></p></div></div></section>`,
+
+classes:()=>`<section class="card"><h2>📚 Уроки</h2><p class="muted">Каждый урок расходует энергию и время. Выборы влияют на оценки, репутацию и сюжет.</p>
+<div class="grid">${[
+["Заклинания","✨","spellXP","Практика точности и невербальных чар.",12],
+["Зельеварение","🧪","potionsXP","Ингредиенты, котлы и сложные рецептуры.",14],
+["Травология","🌿","herbXP","Теплицы и магические растения.",10],
+["Защита от тёмных искусств","🛡️","spellXP","Тактика, щиты и дуэльные реакции.",16],
+["Трансфигурация","🦉","spellXP","Сложная теория превращений.",15],
+["История магии","📜","spellXP","Лекции и древние события.",6]
+].map(a=>`<div class="mini"><h3>${a[1]} ${a[0]}</h3><p class="muted">${a[3]}</p><button class="btn" onclick="lesson('${a[2]}','${a[0]}',${a[4]})">Посетить урок</button></div>`).join("")}</div></section>`,
+
+castle:()=>`<section class="card"><h2>🗝 Исследование Хогвартса</h2><p>Выбери место. Некоторые зоны открываются только после событий.</p><div class="grid">${[
+["Большой зал","🍽","Здесь можно встретить учеников и услышать слухи.","hall"],
+["Подземелья","🐍","Слизеринская гостиная и кабинеты зельеварения.","dungeon"],
+["Библиотека","📚","Тихое место для исследований. Иногда книги скрывают больше, чем кажется.","library"],
+["Теплицы","🌱","Магические растения и редкие ингредиенты.","greenhouse"],
+["Астрономическая башня","🌙","Ночное небо, звёзды и разговоры после отбоя.","tower"],
+["Запретный лес","🌲","Опасная территория. Доступ открывается сюжетом.","forest"]
+].map(a=>`<div class="mini"><h3>${a[1]} ${a[0]}</h3><p>${a[2]}</p><button class="btn ${a[3]=='forest'?'danger':''}" onclick="explore('${a[3]}','${a[0]}')">${a[3]=='forest'?'Проверить доступ':'Исследовать'}</button></div>`).join("")}</div></section>`,
+
+friends:()=>`<section class="card"><h2>🐍 Ученики Слизерина</h2><div class="grid">${Object.entries(state.relationships).map(([n,v])=>`<div class="mini"><h3>${n}</h3><p>Отношение: <b>${v}</b>/100</p><div class="bar"><div class="fill" style="width:${Math.max(0,v)}%"></div></div><div class="actions" style="margin-top:10px"><button class="btn" onclick="talk('${n}')">Поговорить</button><button class="btn" onclick="gift('${n}')">Подарок (5🪙)</button></div></div>`).join("")}</div></section>`,
+
+spells:()=>`<section class="card"><h2>✨ Гримуар</h2><p>Осваивай заклинания на уроках и в исследованиях.</p>${[
+["Люмос","Свет","Открыто","Освещает пространство."],["Акцио","Призыв","Ученик","Требует 15 XP заклинаний."],["Протего","Щит","Ученик","Требует 30 XP заклинаний."],["Экспеллиармус","Разоружение","Ученик","Требует 45 XP заклинаний."],["Репаро","Восстановление","Продвинутый","Требует 60 XP заклинаний."],["Петрификус Тоталус","Оглушение","Продвинутый","Требует 80 XP заклинаний."]
+].map(s=>{let ok=s[0]=="Люмос"||state.spellXP>=(parseInt(s[3])||999);return `<div class="spell ${ok?"":"locked"}"><div><b>${s[0]}</b><div class="muted">${s[1]} • ${s[3]}</div></div><button class="btn" ${ok&& !state.learned.includes(s[0])?"":"disabled"} onclick="learn('${s[0]}')">${state.learned.includes(s[0])?"Изучено":ok?"Изучить":"Недоступно"}</button></div>`}).join("")}</section>`,
+
+quests:()=>`<section class="card"><h2>📜 Квесты и сюжет</h2>
+<div class="quest"><b>Первый день</b><p>Познакомься с замком и найди свою гостиную.</p><button class="btn" onclick="complete('first')">${state.quests.first?"✓ Выполнено":"Выполнить"}</button></div>
+<div class="quest"><b>Шёпот библиотеки</b><p>Исследуй библиотеку и найди книгу с зелёной закладкой.</p><button class="btn" onclick="complete('library')">${state.quests.library?"✓ Выполнено":"Начать"}</button></div>
+<div class="quest"><b>Зелье без права на ошибку</b><p>Получить минимум 25 XP в зельеварении.</p><button class="btn" onclick="complete('potion')">${state.quests.potion?"✓ Выполнено":"Проверить"}</button></div>
+<div class="quest"><b>Дуэльный клуб</b><p>Добейся 30 XP заклинаний.</p><button class="btn" onclick="complete('duel')">${state.quests.duel?"✓ Выполнено":"Проверить"}</button></div>
+<div class="quest"><b>Тайна подземелий</b><p>Найди скрытую дверь в слизеринской части замка.</p><button class="btn" onclick="secret()">${state.quests.secret?"✓ Завершено":"Искать"}</button></div>
+</section>`,
+
+inventory:()=>`<section class="card"><h2>🎒 Инвентарь</h2><div class="grid">${state.inventory.map(x=>`<div class="mini">🎒 <b>${x}</b></div>`).join("")}</div><hr><p>Монеты: 🪙 ${state.coins}</p><button class="btn" onclick="buy('Свиток с чарами',8)">Купить свиток — 8🪙</button> <button class="btn" onclick="buy('Шоколадная лягушка',4)">Шоколадная лягушка — 4🪙</button></section>`
+};
+
+function newGame(){
+document.getElementById("modalBox").innerHTML=`<h2>Создание персонажа</h2>
+<label>Имя</label><input id="n" placeholder="Например, Элиза">
+<label>Возраст</label><select id="a">${[11,12,13,14,15,16,17].map(x=>`<option>${x}</option>`).join("")}</select>
+<label>Палочка</label><select id="w"><option>Ива • 11¾" • драконий волос</option><option>Тис • 12" • волос единорога</option><option>Граб • 10¾" • сердцевина феникса</option><option>Чёрный орех • 11½" • сердцевина дракона</option></select>
+<label>Домашний питомец</label><select id="p"><option>Сова</option><option>Кошка</option><option>Жаба</option><option>Нет</option></select>
+<label>Особенность</label><select id="t"><option>Амбициозная</option><option>Наблюдательная</option><option>Храбрая</option><option>Любознательная</option><option>Спокойная</option></select>
+<div class="actions"><button class="btn gold" onclick="create()">Начать учебный год</button><button class="btn" onclick="closeModal()">Отмена</button></div>`;
+openModal()}
+function create(){state.name=document.getElementById("n").value.trim()||"Элиза";state.age=+document.getElementById("a").value;state.wand=document.getElementById("w").value;state.pet=document.getElementById("p").value;state.traits=[document.getElementById("t").value];state.reputation=5;state.housePoints=15;addLog(`Распределение завершено. ${state.name} стала ученицей Слизерина.`);closeModal();render()}
+function lesson(type,name,cost){if(!spendEnergy(cost))return;state[type]+=10;state.housePoints+=2;state.reputation++;addLog(`Ты посетила урок: ${name}. Получено +10 XP.`);advance(1);render()}
+function explore(place,name){
+if(place=="forest"){if(!state.quests.secret){toast("Лес пока закрыт для тебя. Узнай больше о тайне подземелий.");return}}
+if(!spendEnergy(8))return;
+let texts={hall:"За столом Слизерина ты услышала интересный слух о старом портрете.",dungeon:"В коридоре подземелий ты заметила странный серебряный символ.",library:"На полке действительно нашлась книга с зелёной закладкой.",greenhouse:"Профессор оставил несколько безопасных ингредиентов для практики.",tower:"С башни замок выглядит совсем иначе. Ты записала наблюдения в дневник.",forest:"Ты осторожно вошла в лес и нашла следы неизвестного существа."};
+addLog(`Исследование: ${name}. ${texts[place]}`);state.reputation+=2;if(place=="library")state.quests.library=true;if(place=="dungeon")state.quests.first=true;advance(1);render()}
+function talk(n){if(!spendEnergy(5))return;let lines={Draco:"Драко оценивающе посмотрел на тебя: «Не каждый первокурсник так быстро осваивается.»",Pansy:"Пэнси поделилась последними слухами о школе.",Blaise:"Блейз завёл разговор о преподавателях и новых учениках.",Theo:"Тео заметил, что ты слишком внимательно изучаешь замок."};state.relationships[n]=Math.min(100,state.relationships[n]+5);state.reputation++;addLog(`${n}: ${lines[n]}`);advance(1);render()}
+function gift(n){if(state.coins<5){toast("Не хватает монет.");return}state.coins-=5;state.relationships[n]=Math.min(100,state.relationships[n]+10);addLog(`Ты подарила ${n} небольшой подарок.`);render()}
+function learn(s){state.learned.push(s);state.housePoints+=3;addLog(`Заклинание ${s} добавлено в гримуар.`);render()}
+function complete(q){if(state.quests[q])return;
+let ok=q=="first"||q=="library"||(q=="potion"&&state.potionsXP>=25)||(q=="duel"&&state.spellXP>=30);
+if(!ok){toast("Пока не выполнено. Продолжай учиться и исследовать.");return}
+state.quests[q]=true;state.housePoints+=10;state.coins+=8;addLog("Квест выполнен! Получено +10 очков Слизерина и 8 монет.");render()}
+function secret(){if(state.spellXP<20||state.potionsXP<15){toast("Тайна пока слишком сложна. Нужны хотя бы 20 XP заклинаний и 15 XP зельеварения.");return}state.quests.secret=true;state.reputation+=12;state.housePoints+=20;state.inventory.push("Серебряный ключ подземелий");addLog("Ты нашла скрытую дверь. За ней — древняя комната Слизерина. Это начало большой сюжетной линии.");render()}
+function buy(item,cost){if(state.coins<cost){toast("Недостаточно монет.");return}state.coins-=cost;state.inventory.push(item);addLog(`Куплено: ${item}.`);render()}
+function daily(){if(!state.name){newGame();return}let choice=prompt("Что сделать сегодня?\n1 — Учиться (+XP)\n2 — Исследовать замок\n3 — Общаться с учениками\n4 — Отдыхать (+энергия)");if(choice=="1")go("classes");else if(choice=="2")go("castle");else if(choice=="3")go("friends");else if(choice=="4"){state.energy=Math.min(100,state.energy+25);advance(2);addLog("Ты отдохнула в гостиной Слизерина.");render()}}
+function openModal(){document.getElementById("modal").classList.add("open")}
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+load();render();
+</script>
+</body>
+</html>
